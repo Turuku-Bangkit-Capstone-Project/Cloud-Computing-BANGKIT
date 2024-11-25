@@ -3,9 +3,9 @@ const mysql = require('mysql');
 // Konfigurasi database MySQL
 const db = mysql.createConnection({
     host: 'localhost',       // ip host database
-    user: 'myuser',            // Username MySQL
-    password: 'saljusemihujan',// Password MySQL
-    database: 'userdata' // Nama database
+    user: '',            // Username MySQL
+    password: '',// Password MySQL
+    database: '' // Nama database
 });
 
 // Hubungkan ke MySQL
