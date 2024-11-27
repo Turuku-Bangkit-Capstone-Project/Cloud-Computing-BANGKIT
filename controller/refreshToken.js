@@ -1,4 +1,4 @@
-import Users from "../models/userModel.js";
+import Users from "../models/UserModel.js";
 import jwt from "jsonwebtoken"
 
 //function refresh token
@@ -16,9 +16,9 @@ export const refreshToken = async (req,res) => {
     if (!user[0]) return res.sendStatus(403);
     jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
       if (err) return res.sendStatus(403);
-      const userId = user[0].id;
-      const name = user[0].name;
-      const email = user[0].email;
+      const userId = user.id;
+      const name = user.name;
+      const email = user.email;
 
       //buat akses token baru
       const accessToken = jwt.sign({userId, name, email}, process.env.ACCESS_TOKEN_SECRET, {

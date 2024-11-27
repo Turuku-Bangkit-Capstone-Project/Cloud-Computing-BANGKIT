@@ -1,28 +1,33 @@
-/* eslint-disable no-undef */
-import Users from "../models/userModel.js";
+import Users from "../models/UserModel.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
+import dotenv from 'dotenv';
 
 
-export const getUsers = async (req, res) => {
+export const users = async (req, res) => {
   try {
-    const users = await Users.findAll({
-      attributes: ['id', 'name', 'email']
-    });
-    res.json(users);
+      const users = await Users.findAll({
+          attributes: ['name'],
+          where: {
+              id: req.userId // Menggunakan req.userId yang sudah diset
+          }
+      });
+      res.json(users);
   } catch (error) {
-    console.log(error.message);
+      console.log(error.message);
+      res.status(500).json({ msg: "Terjadi kesalahan saat mengambil data pengguna" });
   }
 }
 
 //function register
 export const register = async (req, res) => {
-  const {  
-    name, 
-    email, 
-    password, 
-    confPassword 
-  } = req.body;
+  dotenv.config();
+  const {
+    name,
+    email,
+    password,
+    confPassword
+  } = req.body;  
 
   if (password !== confPassword) 
     return res.status(400).json({msg: "Password dan Confirm Password tidak cocok, silakan coba lagi"});
@@ -55,53 +60,49 @@ export const register = async (req, res) => {
 
 //function login
 export const login = async (req, res) => {
+  dotenv.config();
   try {
-    const user = await Users.findAll({
-      where: {
-        email: req.body.email
-      }
-    }); 
-    //jika user pada email ditemukan maka akan membandingkan password dari client ke dalam database
-    const match = await bcrypt.compare(req.body.password, user[0].password);
-    if (!match) return res.status(400).json({msg: "Password salah"});
+      const user = await Users.findAll({
+          where: {
+              email: req.body.email
+          }
+      }); 
+      const match = await bcrypt.compare(req.body.password, user[0].password);
+      if (!match) return res.status(400).json({msg: "Password salah"});
 
-    //jika pass cocok
-    const userId = user[0].id;
-    const name = user[0].name;
-    const email = user[0].email;
+      const userId = user[0].id;
+      const name = user[0].name;
+      const email = user[0].email;
 
-    //membuat akses token
-    const accessToken = jwt.sign({userId, name, email}, process.env.ACCESS_TOKEN_SECRET, {
-      expiresIn: '5m'
-    });
+      // Membuat akses token dengan userId
+      const accessToken = jwt.sign({ userId, name, email }, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: '20s'
+      });
 
-    //membuat refresh token
-    const refreshToken = jwt.sign({userId, name, email}, process.env.REFRESH_TOKEN_SECRET, {
-      expiresIn: '1d'
-    });
+      const refreshToken = jwt.sign({ userId, name, email }, process.env.REFRESH_TOKEN_SECRET, {
+          expiresIn: '1d'
+      });
 
-    //simpan access token ke dalam db
-    await Users.update({refresh_token: refreshToken},{
-      where:{
-        id: userId
-      }
-    })
-    //membuat http only cookie ke client
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 //expired dalam 1 hari
-    });
+      await Users.update({ refresh_token: refreshToken }, {
+          where: {
+              id: userId
+          },
+      });
 
-    //mengirimkan respon ke client access token
-    res.json({accessToken});
+      res.cookie('refreshToken', refreshToken, {
+          httpOnly: true,
+          maxAge: 24 * 60 * 60 * 1000
+      });
 
+      res.json({ accessToken });
   } catch (error) {
-    res.status(404).json({msg: "Email tidak ditemukan"});
+      res.status(404).json({msg: "Email tidak ditemukan"});
   }
 }
 
 
 //logout
+//hapus token dari db
 export const logout = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) return res.sendStatus(204);
@@ -113,10 +114,10 @@ export const logout = async (req, res) => {
   });
   if (!user[0]) return res.sendStatus(204);
   const userId = user[0].id;
-  await Users.update({refresh_token: null},{
-    where:{
+  await Users.update({ refresh_token: null }, {
+    where: {
       id: userId
-    }
+    },
   });
   res.clearCookie('refreshToken');
   return res.sendStatus(200);
